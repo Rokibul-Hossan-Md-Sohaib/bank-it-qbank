@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QBank - Bilingual Input Panel</title>
+    <style>
+        :root {
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --border: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #38bdf8;
+            --success: #10b981;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { background-color: var(--bg-main); color: var(--text-main); padding: 2rem; }
+        .container { max-width: 900px; margin: 0 auto; background: var(--bg-card); padding: 2rem; border-radius: 12px; border: 1px solid var(--border); }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
+        .btn { background: var(--accent); color: var(--bg-main); padding: 0.6rem 1.2rem; border-radius: 6px; text-decoration: none; font-weight: 600; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; transition: opacity 0.2s; }
+        .btn:hover { opacity: 0.9; }
+        .btn-success { background: var(--success); color: var(--text-main); width: 100%; justify-content: center; font-size: 1rem; margin-top: 1rem; }
+        
+        .meta-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.2rem; background: rgba(255,255,255,0.02); padding: 1.2rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1.5rem; }
+        .lock-banner { grid-column: span 2; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--success); font-weight: 600; padding-bottom: 0.5rem; border-bottom: 1px dashed var(--border); display: none; }
+        .btn-unlock { background: #ef4444; color: white; border: none; padding: 2px 8px; border-radius: 4px; cursor: pointer; }
+        
+        .form-group { margin-bottom: 1.5rem; }
+        .lang-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+        .lang-container { background: rgba(255,255,255,0.01); border: 1px solid var(--border); padding: 1rem; border-radius: 8px; }
+        .sect-title { font-size: 1rem; color: var(--accent); font-weight: 600; margin-bottom: 0.5rem; border-left: 3px solid var(--accent); padding-left: 0.5rem; }
+        
+        label { display: block; margin-bottom: 0.3rem; font-size: 0.85rem; color: var(--text-muted); }
+        input, textarea { width: 100%; padding: 0.75rem; background: var(--bg-main); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main); font-size: 0.95rem; outline: none; transition: border-color 0.2s; }
+        input:focus, textarea:focus { border-color: var(--accent); }
+        input:disabled { background: rgba(0,0,0,0.3); color: var(--text-muted); cursor: not-allowed; }
+        textarea { height: 80px; resize: vertical; }
+        
+        .toast { display: none; margin-top: 1rem; padding: 0.75rem; border-radius: 6px; text-align: center; font-weight: 500; }
+        .toast.loading { background: #3b82f6; }
+        .toast.success { background: var(--success); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2>Add Bilingual Written Question</h2>
+        <a href="search.html" class="btn">🔍 Search Dashboard</a>
+    </div>
+
+    <form id="qForm">
+        <div class="meta-grid">
+            <div id="lockBanner" class="lock-banner">
+                <span>🔒 Meta attributes locked for consecutive entries</span>
+                <button type="button" class="btn-unlock" id="unlockBtn">✕ Unlock</button>
+            </div>
+            <div>
+                <label>Year</label>
+                <input type="text" id="year" list="years-list" placeholder="e.g., 2024" required>
+                <datalist id="years-list"></datalist>
+            </div>
+            <div>
+                <label>Post Name</label>
+                <input type="text" id="post" list="posts-list" placeholder="e.g., Officer IT" required>
+                <datalist id="posts-list"></datalist>
+            </div>
+            <div>
+                <label>Organization</label>
+                <input type="text" id="org" list="orgs-list" placeholder="e.g., Combined Bank" required>
+                <datalist id="orgs-list"></datalist>
+            </div>
+            <div>
+                <label>Exam Taker</label>
+                <input type="text" id="exam" list="exams-list" placeholder="e.g., BIBM" required>
+                <datalist id="exams-list"></datalist>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label style="font-weight: 600; color: var(--accent);">Question (English Only)</label>
+            <textarea id="question" placeholder="Write question in English..." required></textarea>
+        </div>
+
+        <div class="lang-container form-group">
+            <div class="sect-title">Definition / Core Answer</div>
+            <div class="lang-row">
+                <div><label>Bangla Version</label><textarea id="def_bn" placeholder="বাংলা সংজ্ঞা..."></textarea></div>
+                <div><label>English Version</label><textarea id="def_en" placeholder="English definition..."></textarea></div>
+            </div>
+        </div>
+
+        <div class="lang-container form-group">
+            <div class="sect-title">Explanation</div>
+            <div class="lang-row">
+                <div><label>Bangla Version</label><textarea id="exp_bn" placeholder="বাংলা ব্যাখ্যা..."></textarea></div>
+                <div><label>English Version</label><textarea id="exp_en" placeholder="English explanation..."></textarea></div>
+            </div>
+        </div>
+
+        <div class="lang-container form-group">
+            <div class="sect-title">Example / Implementation</div>
+            <div class="lang-row">
+                <div><label>Bangla Version</label><textarea id="ex_bn" placeholder="বাংলা উদাহরণ..."></textarea></div>
+                <div><label>English Version</label><textarea id="ex_en" placeholder="English example..."></textarea></div>
+            </div>
+        </div>
+
+        <div class="lang-container form-group">
+            <div class="sect-title">Why Used</div>
+            <div class="lang-row">
+                <div><label>Bangla Version</label><textarea id="why_bn" placeholder="কেন ব্যবহার করা হয় (বাংলা)..."></textarea></div>
+                <div><label>English Version</label><textarea id="why_en" placeholder="Why used (English)..."></textarea></div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Extra Notes (General)</label>
+            <textarea id="extra" placeholder="Any extra information..."></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-success" id="subBtn">Save Question</button>
+    </form>
+    <div id="toast" class="toast"></div>
+</div>
+
+<script>
+
+const API_URL = "https://script.google.com/macros/s/AKfycbz67d1oolSQcRFlHL4tb54bopsGmh4j7lhqXTLFhYGKSPTdb5mM7M0bpwP6XlR82_hZJA/exec";
+    const metaIds = ['year', 'post', 'org', 'exam'];
+
+    window.addEventListener('DOMContentLoaded', () => {
+        initDatalists();
+        checkLockState();
+        fetchExistingMeta();
+    });
+
+    function initDatalists() {
+        metaIds.forEach(id => {
+            const saved = JSON.parse(localStorage.getItem(`dict_${id}`)) || [];
+            updateDatalistDOM(id, saved);
+        });
+    }
+
+    function updateDatalistDOM(id, array) {
+        const dl = document.getElementById(`${id}s-list`);
+        if(!dl) return;
+        dl.innerHTML = [...new Set(array)].map(val => `<option value="${val}"></option>`).join('');
+    }
+
+    function saveToLocalDict(id, value) {
+        if(!value) return;
+        let current = JSON.parse(localStorage.getItem(`dict_${id}`)) || [];
+        current.push(value);
+        current = [...new Set(current)];
+        localStorage.setItem(`dict_${id}`, JSON.stringify(current));
+        updateDatalistDOM(id, current);
+    }
+
+    async function fetchExistingMeta() {
+        try {
+            const res = await fetch(`${API_URL}?action=get`);
+            const data = await res.json();
+            metaIds.forEach(id => {
+                const keys = data.map(item => item[id]).filter(Boolean);
+                keys.forEach(k => saveToLocalDict(id, k));
+            });
+        } catch(e) { console.log("Meta sync deferred:", e); }
+    }
+
+    function checkLockState() {
+        if (localStorage.getItem('qbank_locked') === 'true') {
+            metaIds.forEach(id => {
+                const val = localStorage.getItem(`lock_${id}`);
+                if (val) {
+                    document.getElementById(id).value = val;
+                    document.getElementById(id).disabled = true;
+                }
+            });
+            document.getElementById('lockBanner').style.display = 'flex';
+        }
+    }
+
+    document.getElementById('unlockBtn').addEventListener('click', () => {
+        metaIds.forEach(id => document.getElementById(id).disabled = false);
+        document.getElementById('lockBanner').style.display = 'none';
+        localStorage.setItem('qbank_locked', 'false');
+    });
+
+    document.getElementById('qForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const toast = document.getElementById('toast');
+        const btn = document.getElementById('subBtn');
+        
+        toast.className = 'toast loading';
+        toast.innerText = 'Appending bilingual payload to Cloud Sheet...';
+        toast.style.display = 'block';
+        btn.disabled = true;
+
+        const payload = {
+            action: 'add',
+            id: 'Q-' + Date.now(),
+            year: document.getElementById('year').value.trim(),
+            post: document.getElementById('post').value.trim(),
+            org: document.getElementById('org').value.trim(),
+            exam: document.getElementById('exam').value.trim(),
+            q: document.getElementById('question').value.trim(),
+            def_bn: document.getElementById('def_bn').value.trim(),
+            def_en: document.getElementById('def_en').value.trim(),
+            exp_bn: document.getElementById('exp_bn').value.trim(),
+            exp_en: document.getElementById('exp_en').value.trim(),
+            ex_bn: document.getElementById('ex_bn').value.trim(),
+            ex_en: document.getElementById('ex_en').value.trim(),
+            why_bn: document.getElementById('why_bn').value.trim(),
+            why_en: document.getElementById('why_en').value.trim(),
+            extra: document.getElementById('extra').value.trim()
+        };
+
+        metaIds.forEach(id => saveToLocalDict(id, payload[id]));
+
+        try {
+            await fetch(API_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            localStorage.setItem('qbank_locked', 'true');
+            metaIds.forEach(id => {
+                localStorage.setItem(`lock_${id}`, payload[id]);
+                document.getElementById(id).disabled = true;
+            });
+            document.getElementById('lockBanner').style.display = 'flex';
+
+            // Clear text inputs
+            ['question', 'def_bn', 'def_en', 'exp_bn', 'exp_en', 'ex_bn', 'ex_en', 'why_bn', 'why_en', 'extra'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+            
+            toast.className = 'toast success';
+            toast.innerText = '🚀 Data stored successfully!';
+            setTimeout(() => toast.style.display = 'none', 3000);
+        } catch (err) {
+            toast.style.background = '#ef4444';
+            toast.innerText = 'Network error. Verify Deployment.';
+        } finally {
+            btn.disabled = false;
+        }
+    });
+</script>
+</body>
+</html>

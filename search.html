@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QBank - Dynamic Bilingual Dashboard</title>
+    <style>
+        :root {
+            --bg-main: #0f172a;
+            --bg-sidebar: #1e293b;
+            --border: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #38bdf8;
+            --card-bg: #1e293b;
+            --lang-bn-color: #fb923c;
+            --lang-en-color: #4ade80;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { background-color: var(--bg-main); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+        
+        .sidebar { width: 300px; background: var(--bg-sidebar); border-right: 1px solid var(--border); padding: 1.5rem; display: flex; flex-direction: column; gap: 1.3rem; overflow-y: auto; }
+        .sidebar h3 { font-size: 0.85rem; text-transform: uppercase; color: var(--accent); letter-spacing: 1px; border-bottom: 1px solid var(--border); padding-bottom: 0.4rem; margin-bottom: 0.3rem; }
+        .filter-grp { display: flex; flex-direction: column; gap: 0.4rem; }
+        .filter-btn { background: rgba(255,255,255,0.03); border: 1px solid var(--border); color: var(--text-main); padding: 0.5rem 0.75rem; border-radius: 6px; text-align: left; font-size: 0.9rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; }
+        .filter-btn:hover, .filter-btn.active { background: var(--accent); color: var(--bg-main); font-weight: 600; border-color: var(--accent); }
+        .badge-count { background: rgba(0,0,0,0.3); color: inherit; font-size: 0.75rem; padding: 2px 6px; border-radius: 10px; }
+        .btn-reset { background: #ef4444; color: white; border: none; padding: 0.6rem; border-radius: 6px; cursor: pointer; font-weight: 600; text-align: center; }
+
+        .lang-switch { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+        .lang-btn { flex: 1; padding: 0.5rem; background: rgba(255,255,255,0.02); border: none; color: var(--text-muted); cursor: pointer; text-align: center; font-size: 0.85rem; font-weight: 600; }
+        .lang-btn.active { background: var(--accent); color: var(--bg-main); }
+
+        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .top-nav { background: var(--bg-sidebar); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+        .search-box { width: 100%; max-width: 450px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 20px; padding: 0.5rem 1rem; color: var(--text-main); outline: none; }
+        .search-box:focus { border-color: var(--accent); }
+        .btn-redirect { background: #10b981; color: white; text-decoration: none; padding: 0.5rem 1rem; border-radius: 6px; font-weight: 600; font-size: 0.9rem; margin-left: 1rem; }
+        
+        .active-tags { padding: 0.5rem 2rem; background: rgba(56, 189, 248, 0.05); border-bottom: 1px solid var(--border); font-size: 0.85rem; color: var(--text-muted); display: none; }
+        
+        .stream { flex: 1; padding: 2rem; overflow-y: auto; background: var(--bg-main); }
+        
+        .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; position: relative; transition: border-color 0.2s; }
+        .card:hover { border-color: var(--accent); }
+        
+        .card-header-area { cursor: pointer; user-select: none; padding-right: 40px; }
+        
+        .card-tags { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .tag { background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text-muted); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+        .tag.blue { border-color: var(--accent); color: var(--accent); }
+        .tag.green { border-color: #10b981; color: #10b981; }
+
+        .btn-del { position: absolute; top: 1.5rem; right: 1.5rem; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.85rem; z-index: 10; }
+        .btn-del:hover { color: #ef4444; }
+
+        .q-title { font-size: 1.2rem; font-weight: 700; color: var(--text-main); line-height: 1.5; border-left: 4px solid var(--accent); padding-left: 0.75rem; display: flex; justify-content: space-between; align-items: center; }
+        .q-title::after { content: '▼'; font-size: 0.8rem; color: var(--text-muted); transition: transform 0.3s; margin-left: 10px; }
+        .card.active .q-title::after { transform: rotate(180deg); color: var(--accent); }
+        
+        .card-body-area { display: none; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 1rem; }
+        .card.active .card-body-area { display: block !important; }
+        
+        .sect { margin-bottom: 1rem; background: rgba(0,0,0,0.15); padding: 0.75rem 1rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.02); }
+        .sect-label { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.4rem; letter-spacing: 0.5px; display: flex; align-items: center; justify-content: space-between; }
+        .sect-val { font-size: 0.95rem; color: #cbd5e1; line-height: 1.6; white-space: pre-wrap; }
+        
+        .lang-badge { font-size: 10px; padding: 1px 5px; border-radius: 3px; font-weight: bold; display: inline-block; margin-bottom: 4px; }
+        .lang-badge.bn { background: rgba(251, 146, 60, 0.1); color: var(--lang-bn-color); border: 1px solid var(--lang-bn-color); }
+        .lang-badge.en { background: rgba(74, 222, 128, 0.1); color: var(--lang-en-color); border: 1px solid var(--lang-en-color); }
+
+        .loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: var(--text-muted); }
+        .spinner { border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--accent); border-radius: 50%; width: 30px; height: 30px; animation: spin 0.8s linear infinite; margin-bottom: 1rem; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <button class="btn-reset" id="resetFilters">Reset All View</button>
+        
+        <div>
+            <h3>🌐 Content Language</h3>
+            <div class="lang-switch">
+                <button class="lang-btn active" id="lang-all" onclick="setLangFilter('all')">Both</button>
+                <button class="lang-btn" id="lang-bn" onclick="setLangFilter('bn')">বাংলা</button>
+                <button class="lang-btn" id="lang-en" onclick="setLangFilter('en')">English</button>
+            </div>
+        </div>
+
+        <div><h3>📅 Year</h3><div class="filter-grp" id="yGroup"></div></div>
+        <div><h3>🏦 Organization</h3><div class="filter-grp" id="oGroup"></div></div>
+        <div><h3>👔 Post</h3><div class="filter-grp" id="pGroup"></div></div>
+        <div><h3>📝 Taker</h3><div class="filter-grp" id="eGroup"></div></div>
+    </div>
+
+    <div class="main">
+        <div class="top-nav">
+            <input type="text" class="search-box" id="searchInp" placeholder="Deep search terms across code/text...">
+            <div style="display: flex; align-items: center;">
+                <span id="counter" style="font-size: 0.9rem; color: var(--text-muted); font-weight: 600;">Total: 0</span>
+                <a href="index.html" class="btn-redirect">➕ Add Question</a>
+            </div>
+        </div>
+
+        <div class="active-tags" id="tagIndicator"></div>
+
+        <div class="stream" id="streamContainer">
+            <div class="loader"><div class="spinner"></div>Synchronizing DB...</div>
+        </div>
+    </div>
+
+<script>
+    // এখানে শুধুমাত্র ১টি একক আসল রানিং API URL রাখা হলো
+    const API_URL = "https://script.google.com/macros/s/AKfycbz67d1oolSQcRFlHL4tb54bopsGmh4j7lhqXTLFhYGKSPTdb5mM7M0bpwP6XlR82_hZJA/exec";
+    let dataset = [];
+    let state = { year: '', org: '', post: '', exam: '', query: '', lang: 'all' };
+
+    window.addEventListener('DOMContentLoaded', loadData);
+
+    async function loadData() {
+        try {
+            const res = await fetch(`${API_URL}?action=get`);
+            dataset = await res.json();
+            compileState();
+        } catch(e) {
+            document.getElementById('streamContainer').innerHTML = `<div style="color:#ef4444;text-align:center;padding:2rem;">Fatal: Sync broken.</div>`;
+        }
+    }
+
+    function setLangFilter(mode) {
+        state.lang = mode;
+        ['all', 'bn', 'en'].forEach(m => document.getElementById(`lang-${m}`).classList.remove('active'));
+        document.getElementById(`lang-${mode}`).classList.add('active');
+        renderMainStream();
+    }
+
+    function compileState() {
+        renderSidebarFilters();
+        renderMainStream();
+    }
+
+    function renderSidebarFilters() {
+        const matrix = { year: {}, org: {}, post: {}, exam: {} };
+        dataset.forEach(d => {
+            if(d.year) matrix.year[d.year] = (matrix.year[d.year] || 0) + 1;
+            if(d.org) matrix.org[d.org] = (matrix.org[d.org] || 0) + 1;
+            if(d.post) matrix.post[d.post] = (matrix.post[d.post] || 0) + 1;
+            if(d.exam) matrix.exam[d.exam] = (matrix.exam[d.exam] || 0) + 1;
+        });
+
+        populateFilterGroup('yGroup', matrix.year, 'year');
+        populateFilterGroup('oGroup', matrix.org, 'org');
+        populateFilterGroup('pGroup', matrix.post, 'post');
+        populateFilterGroup('eGroup', matrix.exam, 'exam');
+    }
+
+    function populateFilterGroup(domId, dataObj, type) {
+        const el = document.getElementById(domId);
+        el.innerHTML = '';
+        Object.keys(dataObj).sort().forEach(key => {
+            const btn = document.createElement('button');
+            btn.className = `filter-btn ${state[type] === key ? 'active' : ''}`;
+            btn.innerHTML = `<span>${key}</span><span class="badge-count">${dataObj[key]}</span>`;
+            btn.onclick = () => {
+                state[type] = state[type] === key ? '' : key;
+                compileState();
+            };
+            el.appendChild(btn);
+        });
+    }
+
+    function renderMainStream() {
+        const target = document.getElementById('streamContainer');
+        target.innerHTML = '';
+
+        const subset = dataset.filter(d => {
+            const mY = !state.year || d.year === state.year;
+            const mO = !state.org || d.org === state.org;
+            const mP = !state.post || d.post === state.post;
+            const mE = !state.exam || d.exam === state.exam;
+            
+            const rawStr = JSON.stringify(d).toLowerCase();
+            const mQ = !state.query || rawStr.includes(state.query.toLowerCase());
+            return mY && mO && mP && mE && mQ;
+        });
+
+        document.getElementById('counter').innerText = `Total: ${subset.length}`;
+        toggleIndicatorBanner();
+
+        if(subset.length === 0) {
+            target.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding-top:3rem;">No elements found.</div>`;
+            return;
+        }
+
+        subset.forEach(d => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            
+            // গুগল স্ক্রিপ্ট ডেটার অবজেক্টের কীগুলোর লোয়ারকেস ম্যাপিং ফিক্স (def_bn, def_en ইত্যাদি)
+            const definition_bn = d.def_bn || d.Definition || '';
+            const definition_en = d.def_en || '';
+            
+            const explanation_bn = d.exp_bn || d.Explanation || '';
+            const explanation_en = d.exp_en || '';
+            
+            const example_bn = d.ex_bn || d.Example || '';
+            const example_en = d.ex_en || '';
+            
+            const whyUsed_bn = d.why_bn || d.WhyUsed || '';
+            const whyUsed_en = d.why_en || '';
+            
+            const extraNotes = d.extra || d.Extra || '';
+
+            let contentBody = '';
+            const schema = [
+                { title: 'Definition / Core Ans', bn: definition_bn, en: definition_en },
+                { title: 'Explanation', bn: explanation_bn, en: explanation_en },
+                { title: 'Example / Implementation', bn: example_bn, en: example_en },
+                { title: 'Why Used', bn: whyUsed_bn, en: whyUsed_en }
+            ];
+
+            schema.forEach(section => {
+                let sectionHtml = '';
+                
+                if (state.lang === 'all') {
+                    if (section.bn) sectionHtml += `<div style="margin-bottom:0.5rem;"><span class="lang-badge bn">বাংলা</span> <div class="sect-val">${section.bn}</div></div>`;
+                    if (section.en) sectionHtml += `<div><span class="lang-badge en">English</span> <div class="sect-val">${section.en}</div></div>`;
+                } else if (state.lang === 'bn' && section.bn) {
+                    sectionHtml += `<div><div class="sect-val">${section.bn}</div></div>`;
+                } else if (state.lang === 'en' && section.en) {
+                    sectionHtml += `<div><div class="sect-val">${section.en}</div></div>`;
+                }
+
+                if(sectionHtml) {
+                    contentBody += `
+                        <div class="sect">
+                            <div class="sect-label"><span>${section.title}</span></div>
+                            ${sectionHtml}
+                        </div>`;
+                }
+            });
+
+            if(extraNotes) {
+                contentBody += `<div class="sect"><div class="sect-label">Extra Notes</div><div class="sect-val">${extraNotes}</div></div>`;
+            }
+
+            card.innerHTML = `
+                <button class="btn-del" onclick="triggerDelete(event, '${d.id}')">🗑️ Delete</button>
+                <div class="card-header-area" onclick="toggleCardCollapse(this)">
+                    <div class="card-tags">
+                        <span class="tag blue">📅 ${d.year}</span>
+                        <span class="tag">${d.post}</span>
+                        <span class="tag green">🏦 ${d.org}</span>
+                        <span class="tag">📝 ${d.exam}</span>
+                    </div>
+                    <div class="q-title">${d.q || d.Question || 'No Title'}</div>
+                </div>
+                <div class="card-body-area">${contentBody}</div>
+            `;
+            target.appendChild(card);
+        });
+    }
+
+    function toggleCardCollapse(headerElement) {
+        const card = headerElement.closest('.card');
+        card.classList.toggle('active');
+    }
+
+    function toggleIndicatorBanner() {
+        const ind = document.getElementById('tagIndicator');
+        const activeArr = Object.entries(state).filter(([k, v]) => v && k !== 'query' && k !== 'lang').map(([k, v]) => `${k}:${v}`);
+        if(state.lang !== 'all') activeArr.push(`view:${state.lang}`);
+        if(state.query) activeArr.push(`query:"${state.query}"`);
+        
+        if(activeArr.length > 0) {
+            ind.style.display = 'block';
+            ind.innerText = `Active Pipelines: ` + activeArr.join(' | ');
+        } else {
+            ind.style.display = 'none';
+        }
+    }
+
+    document.getElementById('searchInp').addEventListener('input', (e) => {
+        state.query = e.target.value.trim();
+        renderMainStream();
+    });
+
+    document.getElementById('resetFilters').addEventListener('click', () => {
+        state = { year: '', org: '', post: '', exam: '', query: '', lang: 'all' };
+        document.getElementById('searchInp').value = '';
+        ['all', 'bn', 'en'].forEach(m => document.getElementById(`lang-${m}`).classList.remove('active'));
+        document.getElementById(`lang-all`).classList.add('active');
+        compileState();
+    });
+
+    async function triggerDelete(event, id) {
+        event.stopPropagation();
+        if(!confirm('Delete target row from database?')) return;
+        dataset = dataset.filter(item => item.id !== id);
+        compileState();
+        try {
+            await fetch(API_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'delete', id: id })
+            });
+        } catch(e) { console.error(e); }
+    }
+</script>
+</body>
+</html>
