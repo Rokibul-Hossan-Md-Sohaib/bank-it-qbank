@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QBank - Dynamic Bilingual Dashboard</title>
+    <title>QBank - Dashboard, Editor & Highlighter</title>
     <style>
         :root {
             --bg-main: #0f172a;
@@ -15,6 +15,7 @@
             --card-bg: #1e293b;
             --lang-bn-color: #fb923c;
             --lang-en-color: #4ade80;
+            --highlight-color: #fde047; /* Yellow Highlighter color */
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
         body { background-color: var(--bg-main); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
@@ -38,20 +39,21 @@
         .btn-redirect { background: #10b981; color: white; text-decoration: none; padding: 0.5rem 1rem; border-radius: 6px; font-weight: 600; font-size: 0.9rem; margin-left: 1rem; }
         
         .active-tags { padding: 0.5rem 2rem; background: rgba(56, 189, 248, 0.05); border-bottom: 1px solid var(--border); font-size: 0.85rem; color: var(--text-muted); display: none; }
-        
         .stream { flex: 1; padding: 2rem; overflow-y: auto; background: var(--bg-main); }
         
-        .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; position: relative; transition: border-color 0.2s; }
-        .card:hover { border-color: var(--accent); }
-        
-        .card-header-area { cursor: pointer; user-select: none; padding-right: 40px; }
+        .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; position: relative; }
+        .card-header-area { cursor: pointer; user-select: none; padding-right: 200px; }
         
         .card-tags { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
         .tag { background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text-muted); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
         .tag.blue { border-color: var(--accent); color: var(--accent); }
         .tag.green { border-color: #10b981; color: #10b981; }
 
-        .btn-del { position: absolute; top: 1.5rem; right: 1.5rem; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.85rem; z-index: 10; }
+        .action-tray { position: absolute; top: 1.5rem; right: 1.5rem; display: flex; gap: 12px; z-index: 10; }
+        .action-tray button { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 600; }
+        .btn-edit-trigger { color: var(--accent); }
+        .btn-hl-clear { color: #fde047; font-size: 0.8rem; border: 1px solid rgba(253, 224, 71, 0.2) !important; padding: 2px 6px; border-radius: 4px; }
+        .btn-del { color: var(--text-muted); }
         .btn-del:hover { color: #ef4444; }
 
         .q-title { font-size: 1.2rem; font-weight: 700; color: var(--text-main); line-height: 1.5; border-left: 4px solid var(--accent); padding-left: 0.75rem; display: flex; justify-content: space-between; align-items: center; }
@@ -59,15 +61,35 @@
         .card.active .q-title::after { transform: rotate(180deg); color: var(--accent); }
         
         .card-body-area { display: none; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 1rem; }
-        .card.active .card-body-area { display: block !important; }
+        .card.active .card-body-area { display: block; }
         
-        .sect { margin-bottom: 1rem; background: rgba(0,0,0,0.15); padding: 0.75rem 1rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.02); }
-        .sect-label { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.4rem; letter-spacing: 0.5px; display: flex; align-items: center; justify-content: space-between; }
-        .sect-val { font-size: 0.95rem; color: #cbd5e1; line-height: 1.6; white-space: pre-wrap; }
+        .sect { margin-bottom: 1rem; background: rgba(0,0,0,0.15); padding: 0.75rem 1rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.02); position: relative; }
+        .sect-label { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.4rem; user-select: none; }
+        .sect-val { font-size: 0.95rem; color: #cbd5e1; line-height: 1.6; }
         
-        .lang-badge { font-size: 10px; padding: 1px 5px; border-radius: 3px; font-weight: bold; display: inline-block; margin-bottom: 4px; }
+        /* Highlight and Bullet formatting tags */
+        .hl-txt { background-color: var(--highlight-color); color: #000; font-weight: 500; border-radius: 2px; padding: 0 2px; }
+        .point-item { list-style: none; position: relative; padding-left: 1.2rem; margin-bottom: 0.3rem; }
+        .point-item::before { content: "•"; color: var(--accent); font-size: 1.3rem; position: absolute; left: 0; top: -3px; }
+
+        .lang-badge { font-size: 10px; padding: 1px 5px; border-radius: 3px; font-weight: bold; user-select: none; }
         .lang-badge.bn { background: rgba(251, 146, 60, 0.1); color: var(--lang-bn-color); border: 1px solid var(--lang-bn-color); }
         .lang-badge.en { background: rgba(74, 222, 128, 0.1); color: var(--lang-en-color); border: 1px solid var(--lang-en-color); }
+
+        /* Modal popup window */
+        .edit-modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+        .modal-content { background: var(--bg-sidebar); width: 90%; max-width: 750px; height: 85vh; border-radius: 12px; border: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+        .modal-header { padding: 1rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { padding: 1.5rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+        .modal-footer { padding: 1rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .form-full { grid-column: span 2; }
+        .modal-body label { font-size: 0.8rem; color: var(--accent); font-weight: 600; display: block; margin-bottom: 4px; }
+        .modal-body input, .modal-body textarea { width: 100%; background: var(--bg-main); border:1px solid var(--border); padding: 0.5rem; color: #fff; border-radius: 6px; outline: none; }
+        .modal-body textarea { height: 75px; resize: vertical; }
+        .btn-action { padding: 0.5rem 1.2rem; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; }
+        .btn-save { background: var(--accent); color: var(--bg-main); }
+        .btn-close { background: #475569; color: white; }
 
         .loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: var(--text-muted); }
         .spinner { border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--accent); border-radius: 50%; width: 30px; height: 30px; animation: spin 0.8s linear infinite; margin-bottom: 1rem; }
@@ -78,7 +100,6 @@
 
     <div class="sidebar">
         <button class="btn-reset" id="resetFilters">Reset All View</button>
-        
         <div>
             <h3>🌐 Content Language</h3>
             <div class="lang-switch">
@@ -87,7 +108,6 @@
                 <button class="lang-btn" id="lang-en" onclick="setLangFilter('en')">English</button>
             </div>
         </div>
-
         <div><h3>📅 Year</h3><div class="filter-grp" id="yGroup"></div></div>
         <div><h3>🏦 Organization</h3><div class="filter-grp" id="oGroup"></div></div>
         <div><h3>👔 Post</h3><div class="filter-grp" id="pGroup"></div></div>
@@ -96,23 +116,54 @@
 
     <div class="main">
         <div class="top-nav">
-            <input type="text" class="search-box" id="searchInp" placeholder="Deep search terms across code/text...">
+            <input type="text" class="search-box" id="searchInp" placeholder="Deep search terms across text...">
             <div style="display: flex; align-items: center;">
                 <span id="counter" style="font-size: 0.9rem; color: var(--text-muted); font-weight: 600;">Total: 0</span>
                 <a href="index.html" class="btn-redirect">➕ Add Question</a>
             </div>
         </div>
-
         <div class="active-tags" id="tagIndicator"></div>
-
         <div class="stream" id="streamContainer">
             <div class="loader"><div class="spinner"></div>Synchronizing DB...</div>
         </div>
     </div>
 
+    <div class="edit-modal" id="editModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 style="font-size:1.1rem; color:var(--accent);">✏️ Edit Database Row</h2>
+                <button onclick="closeModal()" style="background:transparent; border:none; color:#fff; font-size:1.2rem; cursor:pointer;">✕</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit_id">
+                <div class="form-grid">
+                    <div><label>Year</label><input type="text" id="edit_year"></div>
+                    <div><label>Organization</label><input type="text" id="edit_org"></div>
+                    <div><label>Post</label><input type="text" id="edit_post"></div>
+                    <div><label>Exam Taker</label><input type="text" id="edit_exam"></div>
+                </div>
+                <div class="form-full"><label>Question</label><textarea id="edit_q" style="height:45px;"></textarea></div>
+                <div class="form-grid">
+                    <div><label>Definition (BN)</label><textarea id="edit_def_bn"></textarea></div>
+                    <div><label>Definition (EN)</label><textarea id="edit_def_en"></textarea></div>
+                    <div><label>Explanation (BN)</label><textarea id="edit_exp_bn"></textarea></div>
+                    <div><label>Explanation (EN)</label><textarea id="edit_exp_en"></textarea></div>
+                    <div><label>Example (BN)</label><textarea id="edit_ex_bn"></textarea></div>
+                    <div><label>Example (EN)</label><textarea id="edit_ex_en"></textarea></div>
+                    <div><label>Why Used (BN)</label><textarea id="edit_why_bn"></textarea></div>
+                    <div><label>Why Used (EN)</label><textarea id="edit_why_en"></textarea></div>
+                </div>
+                <div class="form-full"><label>Extra Notes</label><textarea id="edit_extra" style="height:45px;"></textarea></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-action btn-close" onclick="closeModal()">Cancel</button>
+                <button class="btn-action btn-save" onclick="saveDataUpdate()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
 <script>
-    // এখানে শুধুমাত্র ১টি একক আসল রানিং API URL রাখা হলো
-    const API_URL = "https://script.google.com/macros/s/AKfycbz67d1oolSQcRFlHL4tb54bopsGmh4j7lhqXTLFhYGKSPTdb5mM7M0bpwP6XlR82_hZJA/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbxFFl5A85FM4JHKOp39jSARlpKcaKemjm9ZYYcTf5KxONx39UKH2GakFEoQRViNaDsMvA/exec";
     let dataset = [];
     let state = { year: '', org: '', post: '', exam: '', query: '', lang: 'all' };
 
@@ -123,6 +174,7 @@
             const res = await fetch(`${API_URL}?action=get`);
             dataset = await res.json();
             compileState();
+            setupSelectionHighlighter(); // Activation of instant text highlighter layer
         } catch(e) {
             document.getElementById('streamContainer').innerHTML = `<div style="color:#ef4444;text-align:center;padding:2rem;">Fatal: Sync broken.</div>`;
         }
@@ -148,7 +200,6 @@
             if(d.post) matrix.post[d.post] = (matrix.post[d.post] || 0) + 1;
             if(d.exam) matrix.exam[d.exam] = (matrix.exam[d.exam] || 0) + 1;
         });
-
         populateFilterGroup('yGroup', matrix.year, 'year');
         populateFilterGroup('oGroup', matrix.org, 'org');
         populateFilterGroup('pGroup', matrix.post, 'post');
@@ -170,6 +221,15 @@
         });
     }
 
+    // Line Points formatter
+    function formatLinePoints(text) {
+        if (!text) return '';
+        // Jodi text-e html tag already thake (like highlight tags), tobe split hobe kintu format thakbe
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        if (lines.length <= 1) return text;
+        return lines.map(line => `<div class="point-item">${line}</div>`).join('');
+    }
+
     function renderMainStream() {
         const target = document.getElementById('streamContainer');
         target.innerHTML = '';
@@ -179,7 +239,6 @@
             const mO = !state.org || d.org === state.org;
             const mP = !state.post || d.post === state.post;
             const mE = !state.exam || d.exam === state.exam;
-            
             const rawStr = JSON.stringify(d).toLowerCase();
             const mQ = !state.query || rawStr.includes(state.query.toLowerCase());
             return mY && mO && mP && mE && mQ;
@@ -196,40 +255,38 @@
         subset.forEach(d => {
             const card = document.createElement('div');
             card.className = 'card';
+            card.dataset.id = d.id; // Unique connection ID
             
-            // গুগল স্ক্রিপ্ট ডেটার অবজেক্টের কীগুলোর লোয়ারকেস ম্যাপিং ফিক্স (def_bn, def_en ইত্যাদি)
-            const definition_bn = d.def_bn || d.Definition || '';
+            // Safe checking mapping with blank string optimization handles
+            const definition_bn = d.def_bn || '';
             const definition_en = d.def_en || '';
-            
-            const explanation_bn = d.exp_bn || d.Explanation || '';
+            const explanation_bn = d.exp_bn || '';
             const explanation_en = d.exp_en || '';
-            
-            const example_bn = d.ex_bn || d.Example || '';
+            const example_bn = d.ex_bn || '';
             const example_en = d.ex_en || '';
-            
-            const whyUsed_bn = d.why_bn || d.WhyUsed || '';
+            const whyUsed_bn = d.why_bn || '';
             const whyUsed_en = d.why_en || '';
-            
-            const extraNotes = d.extra || d.Extra || '';
+            const extraNotes = d.extra || '';
 
             let contentBody = '';
             const schema = [
-                { title: 'Definition / Core Ans', bn: definition_bn, en: definition_en },
-                { title: 'Explanation', bn: explanation_bn, en: explanation_en },
-                { title: 'Example / Implementation', bn: example_bn, en: example_en },
-                { title: 'Why Used', bn: whyUsed_bn, en: whyUsed_en }
+                { title: 'Definition / Core Ans', bn: definition_bn, en: definition_en, fieldBn: 'def_bn', fieldEn: 'def_en' },
+                { title: 'Explanation', bn: explanation_bn, en: explanation_en, fieldBn: 'exp_bn', fieldEn: 'exp_en' },
+                { title: 'Example / Implementation', bn: example_bn, en: example_en, fieldBn: 'ex_bn', fieldEn: 'ex_en' },
+                { title: 'Why Used', bn: whyUsed_bn, en: whyUsed_en, fieldBn: 'why_bn', fieldEn: 'why_en' }
             ];
 
             schema.forEach(section => {
                 let sectionHtml = '';
                 
                 if (state.lang === 'all') {
-                    if (section.bn) sectionHtml += `<div style="margin-bottom:0.5rem;"><span class="lang-badge bn">বাংলা</span> <div class="sect-val">${section.bn}</div></div>`;
-                    if (section.en) sectionHtml += `<div><span class="lang-badge en">English</span> <div class="sect-val">${section.en}</div></div>`;
+                    // Blank na thakle UI-te render hobe push korbe
+                    if (section.bn !== undefined) sectionHtml += `<div style="margin-bottom:0.6rem;"><span class="lang-badge bn">বাংলা</span> <div class="sect-val" data-field="${section.fieldBn}">${formatLinePoints(section.bn)}</div></div>`;
+                    if (section.en !== undefined) sectionHtml += `<div><span class="lang-badge en">English</span> <div class="sect-val" data-field="${section.fieldEn}">${formatLinePoints(section.en)}</div></div>`;
                 } else if (state.lang === 'bn' && section.bn) {
-                    sectionHtml += `<div><div class="sect-val">${section.bn}</div></div>`;
+                    sectionHtml += `<div><div class="sect-val" data-field="${section.fieldBn}">${formatLinePoints(section.bn)}</div></div>`;
                 } else if (state.lang === 'en' && section.en) {
-                    sectionHtml += `<div><div class="sect-val">${section.en}</div></div>`;
+                    sectionHtml += `<div><div class="sect-val" data-field="${section.fieldEn}">${formatLinePoints(section.en)}</div></div>`;
                 }
 
                 if(sectionHtml) {
@@ -242,11 +299,15 @@
             });
 
             if(extraNotes) {
-                contentBody += `<div class="sect"><div class="sect-label">Extra Notes</div><div class="sect-val">${extraNotes}</div></div>`;
+                contentBody += `<div class="sect"><div class="sect-label">Extra Notes</div><div class="sect-val" data-field="extra">${formatLinePoints(extraNotes)}</div></div>`;
             }
 
             card.innerHTML = `
-                <button class="btn-del" onclick="triggerDelete(event, '${d.id}')">🗑️ Delete</button>
+                <div class="action-tray">
+                    <button class="btn-hl-clear" onclick="clearHighlights('${d.id}')">🧹 Clear Highlight</button>
+                    <button class="btn-edit-trigger" onclick="openEditModal('${d.id}')">✏️ Edit</button>
+                    <button class="btn-del" onclick="triggerDelete(event, '${d.id}')">🗑️ Delete</button>
+                </div>
                 <div class="card-header-area" onclick="toggleCardCollapse(this)">
                     <div class="card-tags">
                         <span class="tag blue">📅 ${d.year}</span>
@@ -254,7 +315,7 @@
                         <span class="tag green">🏦 ${d.org}</span>
                         <span class="tag">📝 ${d.exam}</span>
                     </div>
-                    <div class="q-title">${d.q || d.Question || 'No Title'}</div>
+                    <div class="q-title" data-field="q">${d.q || 'No Title'}</div>
                 </div>
                 <div class="card-body-area">${contentBody}</div>
             `;
@@ -267,12 +328,159 @@
         card.classList.toggle('active');
     }
 
+    // 🌟 Instant Mouse Selection Highlighter Core Engine Logic
+    function setupSelectionHighlighter() {
+        document.addEventListener('mouseup', async function() {
+            const selection = window.getSelection();
+            const selectedText = selection.toString().trim();
+            
+            // Jodi text character length solid thake tobey kaj korbe
+            if (selectedText.length === 0) return;
+
+            const range = selection.getRangeAt(0);
+            const containerSect = range.commonAncestorContainer.parentElement.closest('.sect-val, .q-title');
+            
+            if (!containerSect) return;
+
+            const card = containerSect.closest('.card');
+            const cardId = card.dataset.id;
+            const fieldName = containerSect.dataset.field;
+            const targetItem = dataset.find(d => d.id === cardId);
+            
+            if (!targetItem || !fieldName) return;
+
+            // Raw innerText process handling conversion update
+            let originalText = containerSect.innerHTML;
+            
+            // Dynamic text styling tag append processing
+            const span = document.createElement('span');
+            span.className = 'hl-txt';
+            span.textContent = selectedText;
+            
+            try {
+                range.surroundContents(span);
+                selection.removeAllRanges(); // Selection boundary wrap remove
+                
+                // Content validation process sync to local object
+                let currentCleanedHTML = containerSect.innerHTML;
+                
+                // Data conversion parameters format for sheet preservation
+                let rawDatabaseValue = currentCleanedHTML
+                    .replace(/<div class="point-item">/g, '')
+                    .replace(/<\/div>/g, '\n')
+                    .replace(/\n\n/g, '\n').trim();
+
+                targetItem[fieldName] = rawDatabaseValue;
+                
+                // Silent Auto-save processing push to active micro-pipe
+                await fetch(API_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'update', ...targetItem })
+                });
+                console.log(`AutoSync: Highlight saved for ${fieldName}`);
+            } catch (err) {
+                console.warn("Highlighter wrapping collapsed due to complex inner elements structure.");
+            }
+        });
+    }
+
+    // Clear all marked highlighters from row content
+    async function clearHighlights(id) {
+        const item = dataset.find(d => d.id === id);
+        if(!item) return;
+
+        const targetFields = ['q', 'def_bn', 'def_en', 'exp_bn', 'exp_en', 'ex_bn', 'ex_en', 'why_bn', 'why_en', 'extra'];
+        targetFields.forEach(f => {
+            if(item[f]) {
+                item[f] = item[f].replace(/<span class="hl-txt">/g, '').replace(/<\/span>/g, '');
+            }
+        });
+
+        compileState();
+
+        try {
+            await fetch(API_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'update', ...item })
+            });
+        } catch(e) { console.error(e); }
+    }
+
+    // Modal Form Population Controllers
+    function openEditModal(id) {
+        const item = dataset.find(d => d.id === id);
+        if(!item) return;
+
+        document.getElementById('edit_id').value = item.id;
+        document.getElementById('edit_year').value = item.year || '';
+        document.getElementById('edit_org').value = item.org || '';
+        document.getElementById('edit_post').value = item.post || '';
+        document.getElementById('edit_exam').value = item.exam || '';
+        document.getElementById('edit_q').value = item.q || '';
+        document.getElementById('edit_def_bn').value = item.def_bn || '';
+        document.getElementById('edit_def_en').value = item.def_en || '';
+        document.getElementById('edit_exp_bn').value = item.exp_bn || '';
+        document.getElementById('edit_exp_en').value = item.exp_en || '';
+        document.getElementById('edit_ex_bn').value = item.ex_bn || '';
+        document.getElementById('edit_ex_en').value = item.ex_en || '';
+        document.getElementById('edit_why_bn').value = item.why_bn || '';
+        document.getElementById('edit_why_en').value = item.why_en || '';
+        document.getElementById('edit_extra').value = item.extra || '';
+
+        document.getElementById('editModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('editModal').style.display = 'none';
+    }
+
+    async function saveDataUpdate() {
+        const id = document.getElementById('edit_id').value;
+        const payload = {
+            action: 'update',
+            id: id,
+            year: document.getElementById('edit_year').value,
+            org: document.getElementById('edit_org').value,
+            post: document.getElementById('edit_post').value,
+            exam: document.getElementById('edit_exam').value,
+            q: document.getElementById('edit_q').value,
+            def_bn: document.getElementById('edit_def_bn').value,
+            def_en: document.getElementById('edit_def_en').value,
+            exp_bn: document.getElementById('edit_exp_bn').value,
+            exp_en: document.getElementById('edit_exp_en').value,
+            ex_bn: document.getElementById('edit_ex_bn').value,
+            ex_en: document.getElementById('edit_ex_en').value,
+            why_bn: document.getElementById('edit_why_bn').value,
+            why_en: document.getElementById('edit_why_en').value,
+            extra: document.getElementById('edit_extra').value
+        };
+
+        const index = dataset.findIndex(item => item.id === id);
+        if(index !== -1) {
+            dataset[index] = payload;
+            compileState();
+        }
+        closeModal();
+
+        try {
+            await fetch(API_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        } catch(e) { console.error(e); }
+    }
+
     function toggleIndicatorBanner() {
         const ind = document.getElementById('tagIndicator');
         const activeArr = Object.entries(state).filter(([k, v]) => v && k !== 'query' && k !== 'lang').map(([k, v]) => `${k}:${v}`);
         if(state.lang !== 'all') activeArr.push(`view:${state.lang}`);
         if(state.query) activeArr.push(`query:"${state.query}"`);
-        
         if(activeArr.length > 0) {
             ind.style.display = 'block';
             ind.innerText = `Active Pipelines: ` + activeArr.join(' | ');
