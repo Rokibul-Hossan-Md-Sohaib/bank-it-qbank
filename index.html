@@ -18,27 +18,30 @@
         body { background-color: var(--bg-main); color: var(--text-main); padding: 2rem; }
         .container { max-width: 900px; margin: 0 auto; background: var(--bg-card); padding: 2rem; border-radius: 12px; border: 1px solid var(--border); }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
-        .btn { background: var(--accent); color: var(--bg-main); padding: 0.6rem 1.2rem; border-radius: 6px; text-decoration: none; font-weight: 600; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; transition: opacity 0.2s; }
-        .btn:hover { opacity: 0.9; }
-        .btn-success { background: var(--success); color: var(--text-main); width: 100%; justify-content: center; font-size: 1rem; margin-top: 1rem; }
+        .btn { background: var(--accent); color: var(--bg-main); padding: 0.6rem 1.2rem; border-radius: 6px; font-weight: 600; text-decoration: none; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 8px; font-size: 0.95rem; }
+        .btn-secondary { background: #475569; color: #fff; }
         
-        .meta-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.2rem; background: rgba(255,255,255,0.02); padding: 1.2rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1.5rem; }
-        .lock-banner { grid-column: span 2; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--success); font-weight: 600; padding-bottom: 0.5rem; border-bottom: 1px dashed var(--border); display: none; }
-        .btn-unlock { background: #ef4444; color: white; border: none; padding: 2px 8px; border-radius: 4px; cursor: pointer; }
+        .lock-banner { background: rgba(16, 185, 129, 0.1); border: 1px solid var(--success); color: var(--success); padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1.5rem; display: none; justify-content: space-between; align-items: center; font-size: 0.9rem; font-weight: 600; }
         
-        .form-group { margin-bottom: 1.5rem; }
-        .lang-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
-        .lang-container { background: rgba(255,255,255,0.01); border: 1px solid var(--border); padding: 1rem; border-radius: 8px; }
-        .sect-title { font-size: 1rem; color: var(--accent); font-weight: 600; margin-bottom: 0.5rem; border-left: 3px solid var(--accent); padding-left: 0.5rem; }
+        .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        .field-group { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1.2rem; }
+        .field-group.full { grid-column: span 4; margin-bottom: 1.5rem; }
         
-        label { display: block; margin-bottom: 0.3rem; font-size: 0.85rem; color: var(--text-muted); }
-        input, textarea { width: 100%; padding: 0.75rem; background: var(--bg-main); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main); font-size: 0.95rem; outline: none; transition: border-color 0.2s; }
+        label { font-size: 0.85rem; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; }
+        input, textarea { width: 100%; background: var(--bg-main); border: 1px solid var(--border); color: #fff; padding: 0.75rem; border-radius: 6px; font-size: 0.95rem; outline: none; transition: border 0.2s; }
         input:focus, textarea:focus { border-color: var(--accent); }
-        input:disabled { background: rgba(0,0,0,0.3); color: var(--text-muted); cursor: not-allowed; }
-        textarea { height: 80px; resize: vertical; }
         
-        .toast { display: none; margin-top: 1rem; padding: 0.75rem; border-radius: 6px; text-align: center; font-weight: 500; }
-        .toast.loading { background: #3b82f6; }
+        /* Auto-expand textarea default layout */
+        textarea { 
+            resize: none; 
+            min-height: 60px; 
+            overflow-y: hidden; /* স্ক্রোলবার হাইড রাখার জন্য */
+        }
+        
+        .bilingual-zone { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; border: 1px solid rgba(255,255,255,0.03); background: rgba(0,0,0,0.1); padding: 1.2rem; border-radius: 8px; margin-bottom: 1.5rem; }
+        .zone-title { grid-column: span 2; font-size: 1rem; font-weight: 700; color: var(--text-main); border-left: 4px solid var(--accent); padding-left: 0.5rem; margin-bottom: 0.2rem; }
+        
+        .toast { position: fixed; bottom: 2rem; right: 2rem; padding: 1rem 1.5rem; border-radius: 8px; color: #fff; font-weight: 600; z-index: 1000; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
         .toast.success { background: var(--success); }
     </style>
 </head>
@@ -46,161 +49,166 @@
 
 <div class="container">
     <div class="header">
-        <h2>Add Bilingual Written Question</h2>
-        <a href="search.html" class="btn">🔍 Search Dashboard</a>
+        <h2>🚀 QBank Input Panel</h2>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn btn-secondary" id="unlockBtn" style="display:none;">🔓 Unlock Metadata</button>
+            <a href="search.html" class="btn">🔍 Go To Dashboard</a>
+        </div>
+    </div>
+
+    <div class="lock-banner" id="lockBanner">
+        <span>🔒 Metadata is currently locked for rapid consecutive item entries.</span>
     </div>
 
     <form id="qForm">
         <div class="meta-grid">
-            <div id="lockBanner" class="lock-banner">
-                <span>🔒 Meta attributes locked for consecutive entries</span>
-                <button type="button" class="btn-unlock" id="unlockBtn">✕ Unlock</button>
-            </div>
-            <div>
+            <div class="field-group">
                 <label>Year</label>
-                <input type="text" id="year" list="years-list" placeholder="e.g., 2024" required>
-                <datalist id="years-list"></datalist>
+                <input type="text" id="year" required placeholder="e.g., 2026">
             </div>
-            <div>
-                <label>Post Name</label>
-                <input type="text" id="post" list="posts-list" placeholder="e.g., Officer IT" required>
-                <datalist id="posts-list"></datalist>
+            <div class="field-group">
+                <label>Post / Position</label>
+                <input type="text" id="post" required placeholder="e.g., IT Officer">
             </div>
-            <div>
+            <div class="field-group">
                 <label>Organization</label>
-                <input type="text" id="org" list="orgs-list" placeholder="e.g., Combined Bank" required>
-                <datalist id="orgs-list"></datalist>
+                <input type="text" id="org" required placeholder="e.g., Bangladesh Bank">
             </div>
-            <div>
+            <div class="field-group">
                 <label>Exam Taker</label>
-                <input type="text" id="exam" list="exams-list" placeholder="e.g., BIBM" required>
-                <datalist id="exams-list"></datalist>
+                <input type="text" id="exam" required placeholder="e.g., Arts Faculty">
             </div>
         </div>
 
-        <div class="form-group">
-            <label style="font-weight: 600; color: var(--accent);">Question (English Only)</label>
-            <textarea id="question" placeholder="Write question in English..." required></textarea>
+        <div class="field-group full">
+            <label>Question Topic / Title</label>
+            <textarea id="question" required placeholder="Enter the question or core term title here..."></textarea>
         </div>
 
-        <div class="lang-container form-group">
-            <div class="sect-title">Definition / Core Answer</div>
-            <div class="lang-row">
-                <div><label>Bangla Version</label><textarea id="def_bn" placeholder="বাংলা সংজ্ঞা..."></textarea></div>
-                <div><label>English Version</label><textarea id="def_en" placeholder="English definition..."></textarea></div>
+        <div class="bilingual-zone">
+            <div class="zone-title">1. Definition / Core Answer</div>
+            <div class="field-group">
+                <label>Bangla Content</label>
+                <textarea id="def_bn" placeholder="সংজ্ঞা বা মূল উত্তর বাংলায় লিখুন..."></textarea>
+            </div>
+            <div class="field-group">
+                <label>English Content</label>
+                <textarea id="def_en" placeholder="Write core answer / definition in English..."></textarea>
             </div>
         </div>
 
-        <div class="lang-container form-group">
-            <div class="sect-title">Explanation</div>
-            <div class="lang-row">
-                <div><label>Bangla Version</label><textarea id="exp_bn" placeholder="বাংলা ব্যাখ্যা..."></textarea></div>
-                <div><label>English Version</label><textarea id="exp_en" placeholder="English explanation..."></textarea></div>
+        <div class="bilingual-zone">
+            <div class="zone-title">2. Explanation</div>
+            <div class="field-group">
+                <label>Bangla Content</label>
+                <textarea id="exp_bn" placeholder="বিস্তারিত ব্যাখ্যা বাংলায় লিখুন..."></textarea>
+            </div>
+            <div class="field-group">
+                <label>English Content</label>
+                <textarea id="exp_en" placeholder="Write full explanation in English..."></textarea>
             </div>
         </div>
 
-        <div class="lang-container form-group">
-            <div class="sect-title">Example / Implementation</div>
-            <div class="lang-row">
-                <div><label>Bangla Version</label><textarea id="ex_bn" placeholder="বাংলা উদাহরণ..."></textarea></div>
-                <div><label>English Version</label><textarea id="ex_en" placeholder="English example..."></textarea></div>
+        <div class="bilingual-zone">
+            <div class="zone-title">3. Example / Implementation</div>
+            <div class="field-group">
+                <label>Bangla Content</label>
+                <textarea id="ex_bn" placeholder="উদাহরণ বা ইমপ্লিমেন্টেশন বাংলায়..."></textarea>
+            </div>
+            <div class="field-group">
+                <label>English Content</label>
+                <textarea id="ex_en" placeholder="Write examples or code syntax in English..."></textarea>
             </div>
         </div>
 
-        <div class="lang-container form-group">
-            <div class="sect-title">Why Used</div>
-            <div class="lang-row">
-                <div><label>Bangla Version</label><textarea id="why_bn" placeholder="কেন ব্যবহার করা হয় (বাংলা)..."></textarea></div>
-                <div><label>English Version</label><textarea id="why_en" placeholder="Why used (English)..."></textarea></div>
+        <div class="bilingual-zone">
+            <div class="zone-title">4. Why Used / Advantages</div>
+            <div class="field-group">
+                <label>Bangla Content</label>
+                <textarea id="why_bn" placeholder="কেন ব্যবহার করা হয় বা সুবিধা বাংলায়..."></textarea>
+            </div>
+            <div class="field-group">
+                <label>English Content</label>
+                <textarea id="why_en" placeholder="Why is it used / key benefits in English..."></textarea>
             </div>
         </div>
 
-        <div class="form-group">
-            <label>Extra Notes (General)</label>
-            <textarea id="extra" placeholder="Any extra information..."></textarea>
+        <div class="field-group full">
+            <label>Extra Short Notes</label>
+            <textarea id="extra" placeholder="Any extra references, shortcuts or analytical notes..."></textarea>
         </div>
 
-        <button type="submit" class="btn btn-success" id="subBtn">Save Question</button>
+        <button type="submit" class="btn" style="width:100%; justify-content:center; padding:0.9rem; font-size:1.1rem;" id="submitBtn">💾 Push to Google Sheet Database</button>
     </form>
-    <div id="toast" class="toast"></div>
 </div>
 
-<script>
+<div class="toast" id="toast"></div>
 
-const API_URL = "https://script.google.com/macros/s/AKfycbz67d1oolSQcRFlHL4tb54bopsGmh4j7lhqXTLFhYGKSPTdb5mM7M0bpwP6XlR82_hZJA/exec";
+<script>
+     const API_URL = "https://script.google.com/macros/s/AKfycbxFFl5A85FM4JHKOp39jSARlpKcaKemjm9ZYYcTf5KxONx39UKH2GakFEoQRViNaDsMvA/exec";
     const metaIds = ['year', 'post', 'org', 'exam'];
 
-    window.addEventListener('DOMContentLoaded', () => {
-        initDatalists();
-        checkLockState();
-        fetchExistingMeta();
+    // 🌟 লাইভ বক্স বড় করার লজিক (Auto-expand feature)
+    document.querySelectorAll('textarea').forEach(textarea => {
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto'; // হাইট রিসেট
+            this.style.height = this.scrollHeight + 'px'; // কন্টেন্টের সাইজ অনুযায়ী নতুন হাইট সেট
+        });
     });
 
-    function initDatalists() {
-        metaIds.forEach(id => {
-            const saved = JSON.parse(localStorage.getItem(`dict_${id}`)) || [];
-            updateDatalistDOM(id, saved);
+    // ফর্ম রিসেট করার সময় বক্সগুলোর সাইজ আবার আগের মতো ছোট করার ফাংশন
+    function resetTextareaHeights() {
+        document.querySelectorAll('textarea').forEach(textarea => {
+            textarea.style.height = 'auto';
         });
     }
 
-    function updateDatalistDOM(id, array) {
-        const dl = document.getElementById(`${id}s-list`);
-        if(!dl) return;
-        dl.innerHTML = [...new Set(array)].map(val => `<option value="${val}"></option>`).join('');
+    function generateUUID() {
+        return 'id-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now().toString(36);
     }
 
-    function saveToLocalDict(id, value) {
-        if(!value) return;
-        let current = JSON.parse(localStorage.getItem(`dict_${id}`)) || [];
-        current.push(value);
-        current = [...new Set(current)];
-        localStorage.setItem(`dict_${id}`, JSON.stringify(current));
-        updateDatalistDOM(id, current);
-    }
+    function saveToLocalDict(id, val) { localStorage.setItem(`meta_${id}`, val); }
+    function getFromLocalDict(id) { return localStorage.getItem(`meta_${id}`) || ''; }
 
-    async function fetchExistingMeta() {
-        try {
-            const res = await fetch(`${API_URL}?action=get`);
-            const data = await res.json();
+    window.addEventListener('DOMContentLoaded', () => {
+        metaIds.forEach(id => {
+            const savedValue = getFromLocalDict(id);
+            if(savedValue) document.getElementById(id).value = savedValue;
+        });
+
+        if(localStorage.getItem('qbank_locked') === 'true') {
             metaIds.forEach(id => {
-                const keys = data.map(item => item[id]).filter(Boolean);
-                keys.forEach(k => saveToLocalDict(id, k));
-            });
-        } catch(e) { console.log("Meta sync deferred:", e); }
-    }
-
-    function checkLockState() {
-        if (localStorage.getItem('qbank_locked') === 'true') {
-            metaIds.forEach(id => {
-                const val = localStorage.getItem(`lock_${id}`);
-                if (val) {
-                    document.getElementById(id).value = val;
-                    document.getElementById(id).disabled = true;
-                }
+                document.getElementById(id).value = localStorage.getItem(`lock_${id}`) || '';
+                document.getElementById(id).disabled = true;
             });
             document.getElementById('lockBanner').style.display = 'flex';
+            document.getElementById('unlockBtn').style.display = 'inline-flex';
         }
-    }
+    });
 
     document.getElementById('unlockBtn').addEventListener('click', () => {
-        metaIds.forEach(id => document.getElementById(id).disabled = false);
+        localStorage.removeItem('qbank_locked');
+        metaIds.forEach(id => {
+            document.getElementById(id).disabled = false;
+            localStorage.removeItem(`lock_${id}`);
+        });
         document.getElementById('lockBanner').style.display = 'none';
-        localStorage.setItem('qbank_locked', 'false');
+        document.getElementById('unlockBtn').style.display = 'none';
     });
 
     document.getElementById('qForm').addEventListener('submit', async (e) => {
         e.preventDefault();
+        const btn = document.getElementById('submitBtn');
         const toast = document.getElementById('toast');
-        const btn = document.getElementById('subBtn');
         
-        toast.className = 'toast loading';
-        toast.innerText = 'Appending bilingual payload to Cloud Sheet...';
-        toast.style.display = 'block';
         btn.disabled = true;
+        toast.style.background = '#334155';
+        toast.innerText = 'Syncing transmission...';
+        toast.style.display = 'block';
 
         const payload = {
             action: 'add',
-            id: 'Q-' + Date.now(),
+            id: generateUUID(),
             year: document.getElementById('year').value.trim(),
             post: document.getElementById('post').value.trim(),
             org: document.getElementById('org').value.trim(),
@@ -233,12 +241,15 @@ const API_URL = "https://script.google.com/macros/s/AKfycbz67d1oolSQcRFlHL4tb54b
                 document.getElementById(id).disabled = true;
             });
             document.getElementById('lockBanner').style.display = 'flex';
+            document.getElementById('unlockBtn').style.display = 'inline-flex';
 
-            // Clear text inputs
+            // ক্লিয়ার টেক্সট ইনপুটস
             ['question', 'def_bn', 'def_en', 'exp_bn', 'exp_en', 'ex_bn', 'ex_en', 'why_bn', 'why_en', 'extra'].forEach(id => {
                 document.getElementById(id).value = '';
             });
             
+            resetTextareaHeights(); // সাবমিট হওয়ার পর বক্সের হাইট আবার নরমাল সাইজে নিয়ে যাওয়ার জন্য
+
             toast.className = 'toast success';
             toast.innerText = '🚀 Data stored successfully!';
             setTimeout(() => toast.style.display = 'none', 3000);
