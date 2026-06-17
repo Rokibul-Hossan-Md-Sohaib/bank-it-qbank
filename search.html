@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QBank - Dashboard, Editor & Highlighter</title>
+    <title>QBank - Dashboard, Editor & Popup Highlighter</title>
     <style>
         :root {
             --bg-main: #0f172a;
@@ -18,7 +18,7 @@
             --highlight-color: #fde047; /* Yellow Highlighter color */
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
-        body { background-color: var(--bg-main); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+        body { background-color: var(--bg-main); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; position: relative; }
         
         .sidebar { width: 300px; background: var(--bg-sidebar); border-right: 1px solid var(--border); padding: 1.5rem; display: flex; flex-direction: column; gap: 1.3rem; overflow-y: auto; }
         .sidebar h3 { font-size: 0.85rem; text-transform: uppercase; color: var(--accent); letter-spacing: 1px; border-bottom: 1px solid var(--border); padding-bottom: 0.4rem; margin-bottom: 0.3rem; }
@@ -67,8 +67,10 @@
         .sect-label { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.4rem; user-select: none; }
         .sect-val { font-size: 0.95rem; color: #cbd5e1; line-height: 1.6; }
         
-        /* Highlight and Bullet formatting tags */
-        .hl-txt { background-color: var(--highlight-color); color: #000; font-weight: 500; border-radius: 2px; padding: 0 2px; }
+        /* Highlight formatting layout elements */
+        .hl-txt { background-color: var(--highlight-color); color: #000; font-weight: 500; border-radius: 2px; padding: 0 2px; cursor: pointer; transition: background 0.2s; }
+        .hl-txt:hover { background-color: #facc15; title: "Click to Unhighlight"; }
+        
         .point-item { list-style: none; position: relative; padding-left: 1.2rem; margin-bottom: 0.3rem; }
         .point-item::before { content: "•"; color: var(--accent); font-size: 1.3rem; position: absolute; left: 0; top: -3px; }
 
@@ -76,7 +78,39 @@
         .lang-badge.bn { background: rgba(251, 146, 60, 0.1); color: var(--lang-bn-color); border: 1px solid var(--lang-bn-color); }
         .lang-badge.en { background: rgba(74, 222, 128, 0.1); color: var(--lang-en-color); border: 1px solid var(--lang-en-color); }
 
-        /* Modal popup window */
+        /* 🌟 TEXT ACTION POPUP MENU SYSTEM */
+        .text-popup-menu {
+            position: absolute;
+            background: #1e293b;
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            display: none;
+            gap: 2px;
+            padding: 4px;
+            z-index: 5000;
+        }
+        .popup-btn {
+            background: transparent;
+            border: none;
+            color: #fff;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .popup-btn:hover {
+            background: var(--accent);
+            color: var(--bg-main);
+        }
+        .popup-btn.hl-btn { color: #fde047; }
+        .popup-btn.hl-btn:hover { color: #000; }
+
+        /* Modal windows */
         .edit-modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
         .modal-content { background: var(--bg-sidebar); width: 90%; max-width: 750px; height: 85vh; border-radius: 12px; border: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
         .modal-header { padding: 1rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
@@ -97,6 +131,11 @@
     </style>
 </head>
 <body>
+
+    <div class="text-popup-menu" id="textPopupMenu">
+        <button class="popup-btn hl-btn" id="popupHighlightAction">📝 Highlight</button>
+        <button class="popup-btn" id="popupCopyAction">📋 Copy</button>
+    </div>
 
     <div class="sidebar">
         <button class="btn-reset" id="resetFilters">Reset All View</button>
@@ -166,6 +205,7 @@
     const API_URL = "https://script.google.com/macros/s/AKfycbxFFl5A85FM4JHKOp39jSARlpKcaKemjm9ZYYcTf5KxONx39UKH2GakFEoQRViNaDsMvA/exec";
     let dataset = [];
     let state = { year: '', org: '', post: '', exam: '', query: '', lang: 'all' };
+    let currentSelectionData = null; // Highlighting tracker pointer
 
     window.addEventListener('DOMContentLoaded', loadData);
 
@@ -174,7 +214,7 @@
             const res = await fetch(`${API_URL}?action=get`);
             dataset = await res.json();
             compileState();
-            setupSelectionHighlighter(); // Activation of instant text highlighter layer
+            setupSelectionMenuEngine(); // Popup Context Menu layer active initialization
         } catch(e) {
             document.getElementById('streamContainer').innerHTML = `<div style="color:#ef4444;text-align:center;padding:2rem;">Fatal: Sync broken.</div>`;
         }
@@ -221,10 +261,9 @@
         });
     }
 
-    // Line Points formatter
     function formatLinePoints(text) {
         if (!text) return '';
-        // Jodi text-e html tag already thake (like highlight tags), tobe split hobe kintu format thakbe
+        // Bullet conversion logic safely wraps elements
         const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
         if (lines.length <= 1) return text;
         return lines.map(line => `<div class="point-item">${line}</div>`).join('');
@@ -255,9 +294,8 @@
         subset.forEach(d => {
             const card = document.createElement('div');
             card.className = 'card';
-            card.dataset.id = d.id; // Unique connection ID
+            card.dataset.id = d.id;
             
-            // Safe checking mapping with blank string optimization handles
             const definition_bn = d.def_bn || '';
             const definition_en = d.def_en || '';
             const explanation_bn = d.exp_bn || '';
@@ -280,9 +318,8 @@
                 let sectionHtml = '';
                 
                 if (state.lang === 'all') {
-                    // Blank na thakle UI-te render hobe push korbe
-                    if (section.bn !== undefined) sectionHtml += `<div style="margin-bottom:0.6rem;"><span class="lang-badge bn">বাংলা</span> <div class="sect-val" data-field="${section.fieldBn}">${formatLinePoints(section.bn)}</div></div>`;
-                    if (section.en !== undefined) sectionHtml += `<div><span class="lang-badge en">English</span> <div class="sect-val" data-field="${section.fieldEn}">${formatLinePoints(section.en)}</div></div>`;
+                    if (section.bn) sectionHtml += `<div style="margin-bottom:0.6rem;"><span class="lang-badge bn">বাংলা</span> <div class="sect-val" data-field="${section.fieldBn}">${formatLinePoints(section.bn)}</div></div>`;
+                    if (section.en) sectionHtml += `<div><span class="lang-badge en">English</span> <div class="sect-val" data-field="${section.fieldEn}">${formatLinePoints(section.en)}</div></div>`;
                 } else if (state.lang === 'bn' && section.bn) {
                     sectionHtml += `<div><div class="sect-val" data-field="${section.fieldBn}">${formatLinePoints(section.bn)}</div></div>`;
                 } else if (state.lang === 'en' && section.en) {
@@ -304,7 +341,7 @@
 
             card.innerHTML = `
                 <div class="action-tray">
-                    <button class="btn-hl-clear" onclick="clearHighlights('${d.id}')">🧹 Clear Highlight</button>
+                    <button class="btn-hl-clear" onclick="clearHighlights('${d.id}')">🧹 Clear All Marks</button>
                     <button class="btn-edit-trigger" onclick="openEditModal('${d.id}')">✏️ Edit</button>
                     <button class="btn-del" onclick="triggerDelete(event, '${d.id}')">🗑️ Delete</button>
                 </div>
@@ -319,6 +356,15 @@
                 </div>
                 <div class="card-body-area">${contentBody}</div>
             `;
+            
+            // 🌟 Add Click Target Logic to existing highlighted spans for instant Unhighlight on Single Click!
+            card.querySelectorAll('.hl-txt').forEach(span => {
+                span.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    unhighlightSingleElement(this);
+                });
+            });
+
             target.appendChild(card);
         });
     }
@@ -328,62 +374,138 @@
         card.classList.toggle('active');
     }
 
-    // 🌟 Instant Mouse Selection Highlighter Core Engine Logic
-    function setupSelectionHighlighter() {
-        document.addEventListener('mouseup', async function() {
+    // 🌟 POPUP CONTEXT MENU & INSTANT HIGHLIGHTER TRACKING CORE ENGINE
+    function setupSelectionMenuEngine() {
+        const popup = document.getElementById('textPopupMenu');
+
+        document.addEventListener('mouseup', function(e) {
             const selection = window.getSelection();
             const selectedText = selection.toString().trim();
             
-            // Jodi text character length solid thake tobey kaj korbe
-            if (selectedText.length === 0) return;
+            if (selectedText.length === 0) {
+                popup.style.display = 'none';
+                return;
+            }
 
             const range = selection.getRangeAt(0);
             const containerSect = range.commonAncestorContainer.parentElement.closest('.sect-val, .q-title');
             
-            if (!containerSect) return;
+            if (!containerSect) {
+                popup.style.display = 'none';
+                return;
+            }
 
-            const card = containerSect.closest('.card');
+            // Save active pointer object details for subsequent event execution handles
+            currentSelectionData = {
+                selection: selection,
+                range: range,
+                container: containerSect,
+                selectedText: selectedText
+            };
+
+            // Calculate precise pixel dynamic position layout parameters
+            popup.style.left = `${e.pageX}px`;
+            popup.style.top = `${e.pageY - 45}px`;
+            popup.style.display = 'flex';
+        });
+
+        // Hide floating layout components upon layout background click events
+        document.addEventListener('mousedown', function(e) {
+            if (!popup.contains(e.target)) {
+                popup.style.display = 'none';
+            }
+        });
+
+        // Action Trigger 1: Copy Selected Data Content String directly to system OS Clipboard
+        document.getElementById('popupCopyAction').addEventListener('click', function() {
+            if (!currentSelectionData) return;
+            navigator.clipboard.writeText(currentSelectionData.selectedText);
+            popup.style.display = 'none';
+            window.getSelection().removeAllRanges();
+        });
+
+        // Action Trigger 2: Wrap Highlight elements overlay sequence seamlessly
+        document.getElementById('popupHighlightAction').addEventListener('click', async function() {
+            if (!currentSelectionData) return;
+
+            const { range, container, selection } = currentSelectionData;
+            const card = container.closest('.card');
             const cardId = card.dataset.id;
-            const fieldName = containerSect.dataset.field;
+            const fieldName = container.dataset.field;
             const targetItem = dataset.find(d => d.id === cardId);
-            
+
             if (!targetItem || !fieldName) return;
 
-            // Raw innerText process handling conversion update
-            let originalText = containerSect.innerHTML;
-            
-            // Dynamic text styling tag append processing
             const span = document.createElement('span');
             span.className = 'hl-txt';
-            span.textContent = selectedText;
-            
+            span.title = "Click to Unhighlight";
+            span.textContent = currentSelectionData.selectedText;
+
+            // Bind individual live interactive trigger for future single-click tracking removal routines
+            span.addEventListener('click', function(ev) {
+                ev.stopPropagation();
+                unhighlightSingleElement(this);
+            });
+
             try {
                 range.surroundContents(span);
-                selection.removeAllRanges(); // Selection boundary wrap remove
-                
-                // Content validation process sync to local object
-                let currentCleanedHTML = containerSect.innerHTML;
-                
-                // Data conversion parameters format for sheet preservation
+                selection.removeAllRanges();
+                popup.style.display = 'none';
+
+                // Format structure strings safely before storage commits
+                let currentCleanedHTML = container.innerHTML;
                 let rawDatabaseValue = currentCleanedHTML
                     .replace(/<div class="point-item">/g, '')
                     .replace(/<\/div>/g, '\n')
                     .replace(/\n\n/g, '\n').trim();
 
                 targetItem[fieldName] = rawDatabaseValue;
-                
-                // Silent Auto-save processing push to active micro-pipe
+
+                // Fire async non-blocking serialization push
                 await fetch(API_URL, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'update', ...targetItem })
                 });
-                console.log(`AutoSync: Highlight saved for ${fieldName}`);
             } catch (err) {
-                console.warn("Highlighter wrapping collapsed due to complex inner elements structure.");
+                console.warn("Highlighter wrapping overlapped due to structural element limitations.");
             }
         });
+    }
+
+    // 🌟 UNHIGHLIGHT SPECIFIC INDIVIDUAL WORD LAYER ON SINGLE CLICK
+    async function unhighlightSingleElement(spanElement) {
+        const container = spanElement.closest('.sect-val, .q-title');
+        const card = spanElement.closest('.card');
+        const cardId = card.dataset.id;
+        const fieldName = container.dataset.field;
+        const targetItem = dataset.find(d => d.id === cardId);
+
+        if (!targetItem || !fieldName) return;
+
+        // Strip wrapping tag layer from inner text node safely
+        const textNode = document.createTextNode(spanElement.textContent);
+        spanElement.parentNode.replaceChild(textNode, spanElement);
+
+        // Normalize raw string conversions
+        let currentCleanedHTML = container.innerHTML;
+        let rawDatabaseValue = currentCleanedHTML
+            .replace(/<div class="point-item">/g, '')
+            .replace(/<\/div>/g, '\n')
+            .replace(/\n\n/g, '\n').trim();
+
+        targetItem[fieldName] = rawDatabaseValue;
+
+        // Save layout structures adjustments right away
+        try {
+            await fetch(API_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'update', ...targetItem })
+            });
+        } catch(e) { console.error(e); }
     }
 
     // Clear all marked highlighters from row content
@@ -394,7 +516,7 @@
         const targetFields = ['q', 'def_bn', 'def_en', 'exp_bn', 'exp_en', 'ex_bn', 'ex_en', 'why_bn', 'why_en', 'extra'];
         targetFields.forEach(f => {
             if(item[f]) {
-                item[f] = item[f].replace(/<span class="hl-txt">/g, '').replace(/<\/span>/g, '');
+                item[f] = item[f].replace(/<span class="hl-txt"[^>]*>/g, '').replace(/<\/span>/g, '');
             }
         });
 
